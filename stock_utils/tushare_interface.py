@@ -591,3 +591,21 @@ class TushareInterface(DataInterfaceBase):
     def get_pre_close(self, code):
         daily_line = self.gat_realtime_data(code)
         return daily_line.average_price
+
+    def get_stock_price(self, code, date):
+        try:
+            pro = ts.pro_api()
+            if isinstance(date, datetime):
+                date = date.strftime('%Y%m%d')
+            df = pro.stk_factor(ts_code=code, trade_date=date)
+            if len(df) == 0:
+                return None
+            return df['close_qfq'][0]
+        except Exception as e:
+            pass
+
+    def get_trade_date(self, start_date, end_date):
+        pro = ts.pro_api()
+        df = pro.trade_cal(exchange='', start_date=start_date, end_date=end_date)
+        open_dates = df[df['is_open'] == 1]['cal_date'].tolist()
+        return open_dates

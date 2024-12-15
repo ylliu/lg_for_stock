@@ -71,39 +71,25 @@ def normalized_values(high, low, close):
 
 
 def get_stock_price(stock, date):
-    """
-    returns the stock price given a date
-    """
-    start_date = date - timedelta(days=10)
-    end_date = date
-
-    # enter url of database
-    url = f'https://api.tdameritrade.com/v1/marketdata/{stock}/pricehistory'
-
-    query = {'apikey': str(TD_API), 'startDate': timestamp(start_date), \
-             'endDate': timestamp(end_date), 'periodType': 'year', 'frequencyType': \
-                 'daily', 'frequency': '1', 'needExtendedHoursData': 'False'}
-
-    # request
-    results = requests.get(url, params=query)
-    data = results.json()
-
-    try:
-        # change the data from ms to datetime format
-        data = pd.DataFrame(data['candles'])
-        data['date'] = pd.to_datetime(data['datetime'], unit='ms')
-        return data['close'].values[-1]
-    except:
-        pass
+    tushare_interface = TushareInterface()
+    res = tushare_interface.get_stock_price(stock, date)
+    return res
 
 
 def get_data(sym, start_date=None, end_date=None, n=10):
-    tushare_interface = TushareInterface()
+    # 如果 start_date 和 end_date 是 datetime 类型，转换为 YYYYMMDD 格式的字符串
+    if isinstance(start_date, datetime):
+        start_date = start_date.strftime('%Y%m%d')
 
+    if isinstance(end_date, datetime):
+        end_date = end_date.strftime('%Y%m%d')
+
+    # print(start_date)
+    tushare_interface = TushareInterface()
     data = tushare_interface.get_data_between_dates(start_date, end_date, sym)
     data = data.rename(columns={'vol': 'volume'})
     data['date'] = pd.to_datetime(data['trade_date'], unit='ms')
-    print(data)
+    # print(data)
     # add the noramlzied value function and create a new column
     data['normalized_value'] = data.apply(lambda x: normalized_values(x.high_qfq, x.low_qfq, x.close_qfq), axis=1)
 
@@ -154,7 +140,7 @@ def create_test_data_lr(stock, start_date=None, end_date=None, n=10):
     data = n_day_regression(10, data, idxs)
     data = n_day_regression(20, data, idxs)
 
-    cols = ['close', 'volume', 'normalized_value', '3_reg', '5_reg', '10_reg', '20_reg']
+    cols = ['close_qfq', 'volume', 'normalized_value', '3_reg', '5_reg', '10_reg', '20_reg']
     data = data[cols]
 
     return data.dropna(axis=0)
